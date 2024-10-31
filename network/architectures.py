@@ -7,6 +7,7 @@ Network architetures assembled from .modules
 #%%
 from .modules import Encoder,BottleNeck,Decoder
 import torch
+from torch import nn
 #%%Aux functions
 def formalizeNormMethodName(n):
     if 'batch' in n.lower():
@@ -27,6 +28,14 @@ def formalizeActivationName(n):
     else:
         raise(Exception(f'{n} normalization is not implemented'))
     return res
+
+def initWeights(m):
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
+        nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+            print('.',end='')
+
 
 #%% Image-to-image multi-level encoder-decoder
 class Im2ImMultiLevel(torch.nn.Module):
@@ -73,6 +82,11 @@ class Im2ImMultiLevel(torch.nn.Module):
         self.bottleNeck = torch.nn.ModuleList(bottleNeckList)
         self.decoder = torch.nn.ModuleList(decoderList)
         self.upsample = torch.nn.ModuleList(usModuleList)
+        self.initialize()
+    def initialize(self):
+        print('initalizing network')
+        self.apply(initWeights)
+        print('\n')
     def forward(self,x):
         # creat list for storing intermediate outputs
         dsX = [None]*self.nLevel

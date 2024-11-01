@@ -17,13 +17,17 @@ import sys
 import matplotlib.pyplot as plt
 from ..data.dataHandler import dataLoader
 import random
+import contextlib
 
+from ..loss.DICE import softBianaryDICE2d
+from ..loss.BCE import weightedBCE2d
 #%% class defination
-class trainNTest():
+class networkTrainer():
     def __init__(self,
                  device:str,
                  net:torch.nn.modules,
                  optimizer:torch.optim,
+                 lossFunc,
                  continueTrain:bool ,xferLearn:bool,
                  EPOCHS:int,
                  dataSetLoader:dataLoader,
@@ -33,6 +37,7 @@ class trainNTest():
         #self.lossFnc = ...
         self.net = net;
         self.optimizer = optimizer;
+        self.lossFunc = lossFunc
         self.outDir = outDir;
         for param_group in optimizer.param_groups:
             self.lr = param_group['lr']
@@ -81,14 +86,14 @@ class trainNTest():
             self.net.train()
             datIter = tqdm(self.trainLoader,file=sys.stdout,desc="Training")
             for batch_idx, data in enumerate(datIter):
-                loss = self.computeLoss(data, train = True)
+                loss = self.forwardPass(data, train = True)
                 datIter.set_description(f"Training, batch loss: {loss}")
                 trainLoss += loss
             trainLoss /= len(self.trainLoader)
-            valLoss = self.valdn()
-            print(f"Epoch: {epoch}. Training Loss: {trainLoss}. Validation Loss: {valLoss}")
-            self.trainLoss += trainLoss
-            self.valdnLoss += valLoss
+            valdnLoss = self.valdn()
+            print(f"Epoch: {epoch}. Training Loss: {trainLoss}. Validation Loss: {valdnLoss}")
+            self.trainLoss.append(trainLoss)
+            self.valdnLoss.append(valdnLoss)
             if self.rank == 0:
                 scipy.io.savemat(self.lossDataFN, {'TrainLoss':self.trainLoss,
                                                       'ValdnLoss':self.valdnLoss})
@@ -108,15 +113,26 @@ class trainNTest():
                 raise Exception(f'State @{valdnAtEpoch} Epoch is not found.')
         print("Begin Validation")
         valdnLoss = 0
-        datIter = tqdm(self.valdnLoader,file=sys.stdout,desc="Validating")
+        datIter = self.valdnLoader#tqdm(self.valdnLoader,file=sys.stdout,desc="Validating")
         self.net.eval()
         for batch_idx, data in enumerate(datIter):
-            loss = self.computeLoss(data, train = False)
-            datIter.set_description(f"Validation, batch loss: {loss}")
+            loss = self.forwardPass(data, train = False)
+            #datIter.set_description(f"Validation, batch loss: {loss}")
             valdnLoss += loss
         valdnLoss /= len(self.valdnLoader)
         return valdnLoss
     
-    def computeLoss(self,data,train=True):
-        return 
+    def forwardPass(self,data,train=True):
+        image = data[0].to(self.device).view(-1,1,*data[0].shape[-2:])
+        target = data[1].to(self.device).view(-1,1,*data[1].shape[-2:])
+        bceWeight = data[2].to(self.device).view(-1)
+        context = contextlib.nullcontext if train else torch.no_grad
+        with context:
+            pred = self.net(image)
+            loss = self.loss(pred,target,bceWeight)
+        if train:
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+        return loss.detach().cpu().numpy().squeeze().item()
         

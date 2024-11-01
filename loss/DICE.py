@@ -34,3 +34,4 @@ class softBianaryDICE2d(torch.nn.Module):
         denor = (pred**p).sum(dim=reduce_axis) + (target**p).sum(dim=reduce_axis)
         loss = 1. - (2 * intersection + self.smooth) / (denor + self.smooth)
         return loss.mean()
+    

@@ -16,20 +16,24 @@ class augmentator():
                  doNoise=False,std=0.02,
                  doFlip=False,probH=0.5,probV=0.5):
         if doRigid:
-            rFunc = lambda x: randRigid(x,tRan,rRan)
+            self.rFunc = lambda x: randRigid(x,tRan,rRan)
         else:
-            rFunc = lambda x: x
+            self.rFunc = lambda x: x
         if doNoise:
-            nFunc = lambda x: addNoise(x, std)
+            self.nFunc = lambda x: addNoise(x, std)
         else:
-            nFunc = lambda x: x
+            self.nFunc = lambda x: x
         if doFlip:
-            fFunc = lambda x: randFlip(x, probH, probV)
+            self.fFunc = lambda x: randFlip(x, probH, probV)
         else:
-            fFunc = lambda x: x
-        self.func = lambda x: fFunc( rFunc( nFunc(x) ) )
-    def __call__(self,x):
-        return self.func(x)
+            self.fFunc = lambda x: x
+    def __call__(self,im,mask):
+        stacked = torch.stack(torch.tensor(im),torch.tensor(mask),dim=0)
+        stacked = self.fFunc(stacked)
+        im,mask = self.rFunc(stacked)
+        im = self.nFunc(im).squeeze().numpy()
+        mask = mask.squeeze().numpy
+        return im, mask
     
 #%% random Rigid transformation
 @torch.no_grad()

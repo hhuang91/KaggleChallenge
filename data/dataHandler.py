@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from.augmentation import augmentator
-from preProc import preprocIm, preprocMask
+from .preProc import preprocIm, preprocMask
 from typing import List, Optional, Sequence, Tuple, Union
 
 #%%
@@ -22,18 +22,18 @@ class imbalanceSampler():
         self.num2 = num_data2
     
     def __iter__(self):
-        smp_indx_2 = np.random.choice(self.indx2, self.num2)
+        smp_indx_2 = np.random.choice(self.indx2, self.num2).tolist()
         total_indx = self.indx1 + smp_indx_2
         total_indx = np.random.choice(total_indx,len(total_indx))
         yield from total_indx
         
     def __len__(self):
-        return len(self.indx1) + len(self.indx2)
+        return len(self.indx1) + self.num2
 
 #%% dataset class, handling item (data) fetching
 class dataSet(torch.utils.data.Dataset):
     def __init__(self,data_dir: str,
-                      df:pd.Dataframe,
+                      df:pd.DataFrame,
                       data_kind:str,
                       aug_kwarg:dict = None,
                       set_len:int = None):
@@ -53,8 +53,8 @@ class dataSet(torch.utils.data.Dataset):
         subject = self.df.loc[idx,'subject']
         img = self.df.loc[idx,'img']
         # assemble image directories
-        im_dir = f'self.data_dir/{subject}_{img}.tif'
-        mask_dir = f'self.data_dir/{subject}_{img}_mask.tif'
+        im_dir = f'{self.data_dir}/{subject}_{img}.tif'
+        mask_dir = f'{self.data_dir}/{subject}_{img}_mask.tif'
         # load images
         im = plt.imread(im_dir).astype(np.float32)
         mask = plt.imread(mask_dir).astype(np.float32)
@@ -77,9 +77,9 @@ class dataLoader():
                  train_empty_num: int,
                  device:Union[torch.device,str], 
                  numWorker:int = 0,
-                 aug_kwarg = None):
+                 aug_kwarg = dict()):
         # set cuda-related argument if necessary
-        useCuda = device.type=='cuda'
+        useCuda = torch.device(device).type=='cuda'
         loaderKwagrs = {'batch_size':batch_size}
         if useCuda:
             loaderKwagrs.update({'num_workers': numWorker,'pin_memory': True})

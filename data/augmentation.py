@@ -28,11 +28,11 @@ class augmentator():
         else:
             self.fFunc = lambda x: x
     def __call__(self,im,mask):
-        stacked = torch.stack(torch.tensor(im),torch.tensor(mask),dim=0)
+        stacked = torch.stack([torch.tensor(im),torch.tensor(mask)],dim=0)
         stacked = self.fFunc(stacked)
         im,mask = self.rFunc(stacked)
         im = self.nFunc(im).squeeze().numpy()
-        mask = mask.squeeze().numpy
+        mask = mask.squeeze().numpy()
         return im, mask
     
 #%% random Rigid transformation
@@ -41,15 +41,13 @@ def randRigid(im:torch.tensor,tRan:List=None,rRan:List=None)->torch.tensor:
     doR = False if rRan is None else True
     doT = False if tRan is None else True
     if doR:
-        vR = torch.rand(rRan[0], rRan[1], (3,1))
+        vR = torch.randint(rRan[0], rRan[1], (2,)).tolist()
         im = tF.affine(im, vR[0], (0,0), 1, 0)
         im = tF.affine(im.transpose(-1,-2), vR[1], (0,0), 1, 0).transpose(-1,-2)
-        im = tF.affine(im.transpose(-1,-3), vR[2], (0,0), 1, 0).transpose(-1,-3)
     if doT:
-        vT = torch.rand(tRan[0], tRan[1], (3,1))
+        vT = torch.randint(tRan[0], tRan[1], (2,)).tolist()
         im = tF.affine(im, 0, (vT[0],0),1, 0)
         im = tF.affine(im.transpose(-1,-2), 0, (vT[1],0), 1, 0).transpose(-1,-2)
-        im = tF.affine(im.transpose(-1,-3), 0, (vT[2],0), 1, 0).transpose(-1,-3)
     return im
 
 #%% random noise augmentation
@@ -68,3 +66,4 @@ def randFlip(im:torch.tensor,probH:float,probV:float)->torch.tensor:
         im = tF.hflip(im)
     if vFlip <= probV:
         im = tF.vflip(im)
+    return im

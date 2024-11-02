@@ -55,7 +55,11 @@ class Im2ImMultiLevel(torch.nn.Module):
         usModuleList = []
         for nL in range(nLevel):
             # downsampling module
-            dsModule = torch.nn.Upsample(scale_factor=1/dsFactor[nL],mode='bilinear' if dim==2 else 'trilinear', align_corners=True)
+            if dsFactor[nL] > 1:
+                #dsModule = torch.nn.Upsample(scale_factor=1/dsFactor[nL],mode='bilinear' if dim==2 else 'trilinear', align_corners=True)
+                dsModule = torch.nn.Upsample(scale_factor=1/dsFactor[nL],mode='nearest')
+            else:
+                dsModule = torch.nn.Identity()
             # encoder module
             encoderInputChannel = inputChannel + (nL>0)*outputChannel
             encoder = Encoder(dim, normMethod, activation, encoderInputChannel, channelNum[nL], kernelSize[nL])
@@ -117,5 +121,5 @@ class Im2ImMultiLevel(torch.nn.Module):
         # step 4: upsampel output from all levels
         for nL in range(self.nLevel):
             out[nL] = self.upsample[nL](out[nL])
-        return out
+        return sum(out)
 

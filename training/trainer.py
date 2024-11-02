@@ -15,12 +15,11 @@ import scipy.io
 import os
 import sys
 import matplotlib.pyplot as plt
-from ..data.dataHandler import dataLoader
 import random
 import contextlib
 
-from ..loss.DICE import softBianaryDICE2d
-from ..loss.BCE import weightedBCE2d
+# from ..loss.DICE import softBianaryDICE2d
+# from ..loss.BCE import weightedBCE2d
 #%% class defination
 class networkTrainer():
     def __init__(self,
@@ -30,11 +29,10 @@ class networkTrainer():
                  lossFunc,
                  continueTrain:bool ,xferLearn:bool,
                  EPOCHS:int,
-                 dataSetLoader:dataLoader,
+                 dataSetLoader,
                  outDir:str,
                  rank:int = 0):
         self.rank = rank
-        #self.lossFnc = ...
         self.net = net;
         self.optimizer = optimizer;
         self.lossFunc = lossFunc
@@ -115,24 +113,82 @@ class networkTrainer():
         valdnLoss = 0
         datIter = self.valdnLoader#tqdm(self.valdnLoader,file=sys.stdout,desc="Validating")
         self.net.eval()
+        returnIm = True
         for batch_idx, data in enumerate(datIter):
-            loss = self.forwardPass(data, train = False)
+            if returnIm:
+                loss, pred = self.forwardPass(data, train = False, returnIm=returnIm)
+                pos = data[1].sum([-2,-1]).squeeze()
+                if any(pos > 0):
+                    index = pos.nonzero()[0]
+                    self.plot(data[0][index], pred[index], data[1][index])
+                    returnIm = False
+            else:
+                loss= self.forwardPass(data, train = False, returnIm=returnIm)
             #datIter.set_description(f"Validation, batch loss: {loss}")
             valdnLoss += loss
         valdnLoss /= len(self.valdnLoader)
         return valdnLoss
     
-    def forwardPass(self,data,train=True):
-        image = data[0].to(self.device).view(-1,1,*data[0].shape[-2:])
-        target = data[1].to(self.device).view(-1,1,*data[1].shape[-2:])
-        bceWeight = data[2].to(self.device).view(-1)
+    def forwardPass(self,data,train=True,returnIm=False):
+        image = data[0].float().to(self.device).view(-1,1,*data[0].shape[-2:])
+        target = data[1].float().to(self.device).view(-1,1,*data[1].shape[-2:])
+        bceWeight = data[2].float().to(self.device).view(-1)
         context = contextlib.nullcontext if train else torch.no_grad
-        with context:
+        with context():
             pred = self.net(image)
-            loss = self.loss(pred,target,bceWeight)
+            loss = self.lossFunc(pred,target,bceWeight)
         if train:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-        return loss.detach().cpu().numpy().squeeze().item()
+        loss = loss.detach().cpu().numpy().squeeze().item()
+        if returnIm:
+            return loss, (pred>0).detach().cpu().numpy()
+        else:
+            return loss
+#%% Aux funcitons        
+    def plot(self,im,pred,target):
+        fig,axs = plt.subplots(1,3)
+        axs[0].imshow(im.detach().cpu().squeeze().numpy(),cmap='gray')
+        axs[0].set_title('image')
+        axs[1].imshow(target.detach().cpu().squeeze().numpy(),cmap='gray')
+        axs[1].set_title('target')
+        axs[2].imshow(pred.squeeze(),cmap='gray')
+        axs[2].set_title('prediction')
+        plt.show()
         
+    def saveState(self,state,stateFN,disp=True):
+        torch.save(state,stateFN)
+        if disp:
+            print('-->current training state saved')
+            
+    def loadState(self,stateFN,ldOptm = True,partialLoad = False):
+        state = torch.load(stateFN,self.device)
+        cnnState = state['cnnState']
+        try:
+            self.cnn.load_state_dict(cnnState)
+        except:
+            cnnState = self.stateDictConvert(cnnState)
+        finally:
+            if partialLoad:
+                cnnState = self.partialStateConvert(cnnState)
+            self.cnn.load_state_dict(cnnState)
+        self.cnn.load_state_dict(cnnState)
+        print('loaded training state')
+        if ldOptm:
+            self.optimizer.load_state_dict(state['optimizerState'])
+            print('loaded optimizer state')
+            
+    def stateDictConvert(self,DPstate):
+        from collections import OrderedDict
+        State = OrderedDict()
+        for k, v in DPstate.items():
+            name = k.replace("module.", "") # remove 'module.' of dataparallel
+            State[name] = v
+        return State
+    
+    def partialStateConvert(self,DPstate):
+        cnnDict = self.cnn.state_dict()
+        partialState = {k: v for k, v in DPstate.items() if k in cnnDict}
+        cnnDict.update(partialState)
+        return cnnDict

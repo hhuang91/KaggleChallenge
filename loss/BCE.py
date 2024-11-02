@@ -14,6 +14,6 @@ class weightedBCE2d(torch.nn.Module):
     def forward(self,logit,target,weight):
         logit = logit.view(-1,1,*logit.shape[-2:])
         target = target.view(-1,1,*target.shape[-2:])
-        weight = weight.view(-1)
+        weight = weight.view(-1,1,1,1)
         res = torch.nn.functional.binary_cross_entropy_with_logits(logit, target, weight=weight)
         return res

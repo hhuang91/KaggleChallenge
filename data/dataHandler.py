@@ -19,7 +19,10 @@ class imbalanceSampler():
     def __init__(self,data1,data2,num_data2):
         self.indx1 = [x for x in range (len(data1))]
         self.indx2 = [x for x in range ( len(data1), len(data1)+len(data2) ) ]
-        self.num2 = num_data2
+        if num_data2 == 'all':
+            self.num2 = len(data2)
+        else:
+            self.num2 = num_data2
     
     def __iter__(self):
         smp_indx_2 = np.random.choice(self.indx2, self.num2).tolist()
@@ -77,7 +80,8 @@ class dataLoader():
                  train_empty_num: int,
                  device:Union[torch.device,str], 
                  numWorker:int = 0,
-                 aug_kwarg = dict()):
+                 aug_kwarg = dict(),
+                 shuffle_valdn = False):
         # set cuda-related argument if necessary
         useCuda = torch.device(device).type=='cuda'
         loaderKwagrs = {'batch_size':batch_size}
@@ -103,8 +107,10 @@ class dataLoader():
         self.valdnDS = dataSet(data_dir,valdn_df,'valdn')
         self.testDS = dataSet(data_dir,test_df,'test')
         self.trainLoader = torch.utils.data.DataLoader(self.trainDS,sampler=ib_sampler,**loaderKwagrs)
-        loaderKwagrs['shuffle'] = False
+        loaderKwagrs['shuffle'] = shuffle_valdn
         self.valdnLoader = torch.utils.data.DataLoader(self.valdnDS,**loaderKwagrs)
+        loaderKwagrs['shuffle'] = False
+        # loaderKwagrs['batch_size'] = 1
         self.testLoader  = torch.utils.data.DataLoader(self.testDS, **loaderKwagrs)
         
     def getLoader(self) -> torch.utils.data.DataLoader:

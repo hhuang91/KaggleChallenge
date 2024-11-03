@@ -40,14 +40,17 @@ class augmentator():
 def randRigid(im:torch.tensor,tRan:List=None,rRan:List=None)->torch.tensor:
     doR = False if rRan is None else True
     doT = False if tRan is None else True
-    if doR:
-        vR = torch.randint(rRan[0], rRan[1], (2,)).tolist()
-        im = tF.affine(im, vR[0], (0,0), 1, 0)
-        im = tF.affine(im.transpose(-1,-2), vR[1], (0,0), 1, 0).transpose(-1,-2)
-    if doT:
-        vT = torch.randint(tRan[0], tRan[1], (2,)).tolist()
-        im = tF.affine(im, 0, (vT[0],0),1, 0)
-        im = tF.affine(im.transpose(-1,-2), 0, (vT[1],0), 1, 0).transpose(-1,-2)
+    vR = torch.rand(1).item()*(rRan[1]-rRan[0]) + rRan[0] if doR else 0.
+    vT = torch.randint(tRan[0], tRan[1], (2,)).tolist() if doT else [0,0]
+    im = tF.affine(im, vR, vT, 1, 0)
+    # if doR:
+    #     vR = torch.randint(rRan[0], rRan[1], (2,)).tolist()
+    #     im = tF.affine(im, vR[0], (0,0), 1, 0)
+    #     im = tF.affine(im.transpose(-1,-2), vR[1], (0,0), 1, 0).transpose(-1,-2)
+    # if doT:
+    #     vT = torch.randint(tRan[0], tRan[1], (2,)).tolist()
+    #     im = tF.affine(im, 0, (vT[0],0),1, 0)
+    #     im = tF.affine(im.transpose(-1,-2), 0, (vT[1],0), 1, 0).transpose(-1,-2)
     return im
 
 #%% random noise augmentation

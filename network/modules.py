@@ -41,7 +41,7 @@ class Encoder(torch.nn.Module):
 
 
 class BottleNeck(torch.nn.Module):
-    def __init__(self,dim,normMethod,activation,inputChannel,channelNum,outputChannel):
+    def __init__(self,dim,normMethod,activation,inputChannel,channelNum,outputChannel,dropout=None):
         super().__init__()
         conv = eval(f'torch.nn.Conv{dim}d')
         norm = eval(f'torch.nn.{normMethod}{dim}d')
@@ -56,6 +56,8 @@ class BottleNeck(torch.nn.Module):
             actvLayer = actv()
             normLayer = norm(cNum)
             moduleList += [convLayer,actvLayer,normLayer]
+            if dropout is not None:
+                moduleList += [torch.nn.Dropout(dropout[n])]
         # extra layer to convert channel size to specification
         convLayer = conv(cNum, outputChannel, 1, stride = 1)
         actvLayer = actv()
@@ -83,6 +85,31 @@ class Decoder(torch.nn.Module):
             normLayer = norm(outputC)
             upLayer   = torch.nn.Upsample(scale_factor=2,mode='bilinear' if dim==2 else 'trilinear', align_corners=True)
             moduleList += [convLayer,actvLayer,normLayer,upLayer]
+        self.net = torch.nn.Sequential(*moduleList)
+    def forward(self,x):
+        return self.net(x)
+
+class MLP(torch.nn.Module):
+    def __init__(self,normMethod,activation,inputFeature,featureNum,dropout,outputFeature):
+        super().__init__()
+        linear = torch.nn.Linear
+        norm = eval(f'torch.nn.{normMethod}1d')#torch.nn.Identity#torch.nn.LayerNorm#
+        actv = eval(f'torch.nn.{activation}')
+        moduleList = []
+        for n,fNum in enumerate(featureNum):
+            if n<1:
+                inputF = inputFeature
+            else:
+                inputF = featureNum[n-1]
+            linLayer = linear(inputF, fNum)
+            actvLayer = actv()
+            normLayer = norm(fNum)
+            moduleList += [linLayer,actvLayer,normLayer,torch.nn.Dropout(dropout[n])]
+        # final layer to convert size to 1
+        linLayer = linear(fNum, outputFeature)
+        actvLayer = actv()
+        normLayer = norm(outputFeature)
+        moduleList += [linLayer,actvLayer,normLayer]
         self.net = torch.nn.Sequential(*moduleList)
     def forward(self,x):
         return self.net(x)

@@ -31,6 +31,8 @@ class networkTrainer():
                  EPOCHS:int,
                  dataSetLoader,
                  outDir:str,
+                 save_frequency = 1,
+                 do_plot=True,
                  rank:int = 0):
         self.rank = rank
         self.net = net;
@@ -48,7 +50,9 @@ class networkTrainer():
         self.valdnLoss = []
         self.lossDataFN = self.outDir+'/'+"lossData_LR_"+str(self.lr)+".mat"
         self.stateN = self.outDir+'/'+"state_lr_"+str(self.lr)+"_Epoch_"
-        self.startEpoch = 0;
+        self.startEpoch = 0
+        self.save_frequency = save_frequency
+        self.do_plot = do_plot
         if xferLearn:
             print("Transfer Learning")
             self.lossDataFN = self.outDir+'/'+"lossDataXfer_LR_"+str(self.lr)+".mat"
@@ -56,15 +60,15 @@ class networkTrainer():
             if not continueTrain:
                 stateFN = self.outDir+'/' + "stateXfer"+".pth.tar"
                 if os.path.exists(stateFN):
-                    self.loadState(stateFN,ldOptm=False,partialLoad=True)
+                    self.loadState(stateFN,ldOptm=False,partialLoad=False)
                     print(f"State loaded:{stateFN}")
                 else:
                     raise Exception(f"Need state file named {stateFN}")
         if continueTrain:
             print("Continue Training")
             if os.path.exists(self.lossDataFN):
-                self.trainLoss = scipy.io.loadmat(self.lossDataFN)["TrainLoss"]
-                self.valdnLoss = scipy.io.loadmat(self.lossDataFN)["ValdnLoss"]
+                self.trainLoss = scipy.io.loadmat(self.lossDataFN)["TrainLoss"].squeeze().tolist()
+                self.valdnLoss = scipy.io.loadmat(self.lossDataFN)["ValdnLoss"].squeeze().tolist()
                 print(f"Loss data loaded:{self.lossDataFN}")
             else:
                 raise Exception("Loss Data file missing!")
@@ -92,9 +96,16 @@ class networkTrainer():
             print(f"Epoch: {epoch}. Training Loss: {trainLoss}. Validation Loss: {valdnLoss}")
             self.trainLoss.append(trainLoss)
             self.valdnLoss.append(valdnLoss)
-            if self.rank == 0:
-                scipy.io.savemat(self.lossDataFN, {'TrainLoss':self.trainLoss,
-                                                      'ValdnLoss':self.valdnLoss})
+            if self.rank > 0:
+                continue
+            scipy.io.savemat(self.lossDataFN, {'TrainLoss':self.trainLoss,
+                                                  'ValdnLoss':self.valdnLoss})
+            if len(self.valdnLoss)> 1 and valdnLoss < min(self.valdnLoss[:-1]):
+                state = {'netState' : self.net.state_dict(),
+                          'optimizerState' : self.optimizer.state_dict()}
+                stateFN = self.stateN+"best.pth.tar";
+                self.saveState(state,stateFN)
+            if epoch%self.save_frequency ==0:
                 state = {'netState' : self.net.state_dict(),
                           'optimizerState' : self.optimizer.state_dict()}
                 stateFN = self.stateN+str(epoch)+".pth.tar";
@@ -148,6 +159,7 @@ class networkTrainer():
             return loss
 #%% Aux funcitons        
     def plot(self,im,pred,target):
+        if not self.do_plot: return
         fig,axs = plt.subplots(1,3)
         axs[0].imshow(im.detach().cpu().squeeze().numpy(),cmap='gray')
         axs[0].set_title('image')
@@ -164,16 +176,16 @@ class networkTrainer():
             
     def loadState(self,stateFN,ldOptm = True,partialLoad = False):
         state = torch.load(stateFN,self.device)
-        cnnState = state['cnnState']
+        cnnState = state['netState']
         try:
-            self.cnn.load_state_dict(cnnState)
+            self.net.load_state_dict(cnnState)
         except:
             cnnState = self.stateDictConvert(cnnState)
         finally:
             if partialLoad:
                 cnnState = self.partialStateConvert(cnnState)
-            self.cnn.load_state_dict(cnnState)
-        self.cnn.load_state_dict(cnnState)
+            self.net.load_state_dict(cnnState)
+        self.net.load_state_dict(cnnState)
         print('loaded training state')
         if ldOptm:
             self.optimizer.load_state_dict(state['optimizerState'])
@@ -188,7 +200,7 @@ class networkTrainer():
         return State
     
     def partialStateConvert(self,DPstate):
-        cnnDict = self.cnn.state_dict()
+        cnnDict = self.net.state_dict()
         partialState = {k: v for k, v in DPstate.items() if k in cnnDict}
         cnnDict.update(partialState)
         return cnnDict

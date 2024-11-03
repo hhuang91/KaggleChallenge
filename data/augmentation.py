@@ -7,6 +7,7 @@ Functions for data Augmentation
 #%% import stuff
 import torch
 import torchvision.transforms.functional as tF
+from torchvision.transforms import RandomCrop
 from typing import List, Optional, Sequence, Tuple, Union
 
 #%% Augmentation Object
@@ -14,7 +15,8 @@ class augmentator():
     def __init__(self,
                  doRigid=False,tRan=None,rRan=None,
                  doNoise=False,std=0.02,
-                 doFlip=False,probH=0.5,probV=0.5):
+                 doFlip=False,probH=0.5,probV=0.5,
+                 doCrop=False,cropSize=[256,256]):
         if doRigid:
             self.rFunc = lambda x: randRigid(x,tRan,rRan)
         else:
@@ -27,10 +29,18 @@ class augmentator():
             self.fFunc = lambda x: randFlip(x, probH, probV)
         else:
             self.fFunc = lambda x: x
+        if doCrop:
+            self.cFunc = RandomCrop(cropSize)
+        else:
+            self.cFunc = lambda x: x
     def __call__(self,im,mask):
+        numPos = mask.sum()
         stacked = torch.stack([torch.tensor(im),torch.tensor(mask)],dim=0)
         stacked = self.fFunc(stacked)
-        im,mask = self.rFunc(stacked)
+        stacked = self.rFunc(stacked)
+        im,mask = self.cFunc(stacked)
+        # while mask.sum() < numPos*0.8:
+        #     im,mask = self.cFunc(stacked)
         im = self.nFunc(im).squeeze().numpy()
         mask = mask.squeeze().numpy()
         return im, mask

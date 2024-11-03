@@ -18,13 +18,22 @@ def reSize(x):
     return x.squeeze().numpy()
 
 def preprocIm(im):
-    #im = im/255 <-- not needed since we are performing Z-score normalization
-    im = (im-mu)/std
+    # im = im/255
+    
+    # im = (im-mu)/std
+    
+    m = im.mean()
+    s = im.std()
+    im = (im-m)/s
+    
+    # resize operation has been moved to dataset get_item
     im = reSize(im)
     return im
 
 def preprocMask(mask):
+    # resize operation has been moved to dataset get_item
     mask = (reSize(mask)>0).astype(np.float32)
+    # mask = (mask>0).astype(np.float32)
     pos = (mask>0.5).sum()
     if pos < 1:
         norm_fact = 1

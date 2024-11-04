@@ -48,14 +48,15 @@ def getLatentImSize(imSize,ds,channelNum):
     return int(dsSize[0]*dsSize[1])
 
 #%% Image-to-image multi-level encoder-decoder
-# TODO: add skip connection
 class Im2ImMultiLevel(torch.nn.Module):
     def __init__(self,dim, 
                      nLevel, dsFactor,
                      normMethod,activation,
                      inputChannel, outputChannel, 
                      bottleNeckChennel ,
-                     channelNum, kernelSize):
+                     channelNum, kernelSize,
+                     channelDropout = None,
+                     bottleNeckDropout =None):
         super().__init__()
         normMethod = formalizeNormMethodName(normMethod)
         activation = formalizeActivationName(activation)
@@ -72,15 +73,25 @@ class Im2ImMultiLevel(torch.nn.Module):
             else:
                 dsModule = torch.nn.Identity()
             # encoder module
+            if channelDropout is not None:
+                channelDropout_l = channelDropout[nL]
+            else:
+                channelDropout_l = None
             encoderInputChannel = inputChannel + (nL>0)*outputChannel
-            encoder = Encoder(dim, normMethod, activation, encoderInputChannel, channelNum[nL], kernelSize[nL])
+            encoder = Encoder(dim, normMethod, activation, encoderInputChannel, channelNum[nL], kernelSize[nL],dropout=channelDropout_l)
             # bottle neck module 
             bottleNeckInputChannel = channelNum[nL][-1] if nL < 1 else channelNum[nL][-1] + channelNum[nL-1][-1]
             bottleNeckOutputChannel = channelNum[nL][-1]
+            if bottleNeckDropout is not None:
+                bottleNeckDropout_l = bottleNeckDropout[nL]
+            else:
+                bottleNeckDropout_l = None
             bottleNeck = BottleNeck(dim, normMethod, activation, 
-                                    bottleNeckInputChannel, bottleNeckChennel[nL],bottleNeckOutputChannel)
+                                    bottleNeckInputChannel, bottleNeckChennel[nL],bottleNeckOutputChannel,bottleNeckDropout_l)
             # decoder module
-            decoder = Decoder(dim, normMethod, activation, outputChannel, channelNum[nL][::-1], kernelSize[nL][::-1])
+            if channelDropout is not None:
+                channelDropout_l = channelDropout_l[::-1]
+            decoder = Decoder(dim, normMethod, activation, outputChannel, channelNum[nL][::-1], kernelSize[nL][::-1],dropout=channelDropout_l)
             # upsampling module
             usModule = torch.nn.Upsample(scale_factor=dsFactor[nL],mode='bilinear' if dim==2 else 'trilinear', align_corners=True)
             # add module to list
@@ -145,6 +156,7 @@ class Im2ClassMultiLevel(torch.nn.Module):
                      dropout,
                      bottleNeckChennel ,
                      channelNum, kernelSize,
+                     channelDropout = None,
                      bottleNeckDropout =None):
         super().__init__()
         normMethod = formalizeNormMethodName(normMethod)
@@ -160,8 +172,13 @@ class Im2ClassMultiLevel(torch.nn.Module):
             else:
                 dsModule = torch.nn.Identity()
             # encoder module
+            # encoder module
+            if channelDropout is not None:
+                channelDropout_l = channelDropout[nL]
+            else:
+                channelDropout_l = None
             encoderInputChannel = inputChannel
-            encoder = Encoder(dim, normMethod, activation, encoderInputChannel, channelNum[nL], kernelSize[nL])
+            encoder = Encoder(dim, normMethod, activation, encoderInputChannel, channelNum[nL], kernelSize[nL],dropout=channelDropout_l)
             # bottle neck module 
             bottleNeckInputChannel = channelNum[nL][-1] if nL < 1 else channelNum[nL][-1] + channelNum[nL-1][-1]
             bottleNeckOutputChannel = channelNum[nL][-1]
@@ -202,7 +219,7 @@ class Im2ClassMultiLevel(torch.nn.Module):
             dsX[nL] = self.downsample[nL](x)
         # step 2: pass through level 0 -- the coarsest level
         latent[0] = self.encoder[0](dsX[0])
-        feature = self.bottleNeck[0](latent[0]) # + latent[0]
+        feature = self.bottleNeck[0](latent[0])  + latent[0]
         feature = feature.view(feature.shape[0],-1)
         out[0] = self.decoder[0](feature)
         # step 3: pass through rest of levels -- higher res levels
@@ -216,7 +233,7 @@ class Im2ClassMultiLevel(torch.nn.Module):
             latentList = [tmpUpsample(latent[nL-1]), currentLatent]
             latent[nL] = torch.cat( latentList, dim=1)
             
-            feature = self.bottleNeck[nL](latent[nL]) # + currentLatent
+            feature = self.bottleNeck[nL](latent[nL])  + currentLatent
             feature = feature.view(feature.shape[0],-1)
             out[nL] = self.decoder[nL](feature)
         return sum(out)

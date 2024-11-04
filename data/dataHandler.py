@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 from.augmentation import augmentator
-from .preProc import preprocIm, preprocMask,reSize
+from .preProc import preprocIm, preprocMask
 from typing import List, Optional, Sequence, Tuple, Union
 
 #%%
@@ -64,10 +64,16 @@ class dataSet(torch.utils.data.Dataset):
         im = plt.imread(im_dir).astype(np.float32)
         mask = plt.imread(mask_dir).astype(np.float32)
         # preprocess images
-        # im = reSize(im); mask = reSize(mask)
         im = preprocIm(im)
-        mask, norm_fact = preprocMask(mask)
+        mask = preprocMask(mask)
         im,mask = self.augmentator(im,mask)
+        # get norm factor for BCE computation
+        pos = (mask>0.5).sum()
+        if pos < 1:
+            norm_fact = 1
+        else:
+            neg = (mask<0.5).sum()
+            norm_fact = neg/pos
         return im, mask, norm_fact
     
     def __len__(self) -> int:
@@ -102,7 +108,7 @@ class dataLoader():
         # selection of empty masks will ba handled by sampler
         train_df = pd.concat([train_df_nE,train_df_e],ignore_index=True)
         valdn_df = pd.concat([valdn_df_nE,valdn_df_e],ignore_index=True)
-        test_df = test_df_nE#pd.concat([test_df_nE,test_df_e],ignore_index=True)
+        test_df = pd.concat([test_df_nE,test_df_e],ignore_index=True)#test_df_nE#
         # get unique imbalanced sampler for training data
         ib_sampler = imbalanceSampler(train_df_nE, train_df_e, train_empty_pct)
         ib_sampler_val = imbalanceSampler(valdn_df_nE, valdn_df_e, train_empty_pct, shuffle=False)

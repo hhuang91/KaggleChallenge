@@ -26,18 +26,17 @@ def preprocIm(im):
     s = im.std()
     im = (im-m)/s
     
-    # resize operation has been moved to dataset get_item
     im = reSize(im)
     return im
 
 def preprocMask(mask):
-    # resize operation has been moved to dataset get_item
     mask = (reSize(mask)>0).astype(np.float32)
-    # mask = (mask>0).astype(np.float32)
-    pos = (mask>0.5).sum()
-    if pos < 1:
-        norm_fact = 1
-    else:
-        neg = (mask<0.5).sum()
-        norm_fact = neg/pos
-    return mask, norm_fact
+    # norm_fact computation is now in dataHandler
+    # because of potential random crop
+    # pos = (mask>0.5).sum()
+    # if pos < 1:
+    #     norm_fact = 1
+    # else:
+    #     neg = (mask<0.5).sum()
+    #     norm_fact = neg/pos
+    return mask#, norm_fact

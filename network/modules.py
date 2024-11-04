@@ -17,12 +17,14 @@ def getPadSize(kSize,stride=1,inputSize=None):
 
 #%% Building blocks
 class Encoder(torch.nn.Module):
-    def __init__(self,dim,normMethod,activation,inputChannel,channelNum,kernelSize):
+    def __init__(self,dim,normMethod,activation,inputChannel,channelNum,kernelSize,dropout = None):
         super().__init__()
         conv = eval(f'torch.nn.Conv{dim}d')
         pool = eval(f'torch.nn.MaxPool{dim}d')
         norm = eval(f'torch.nn.{normMethod}{dim}d')
         actv = eval(f'torch.nn.{activation}')
+        if dropout is not None:
+            drp = eval(f'torch.nn.Dropout{dim}d')
         moduleList = []
         for n,(cNum,kSize) in enumerate(zip(channelNum,kernelSize)):
             if n<1:
@@ -35,6 +37,8 @@ class Encoder(torch.nn.Module):
             poolLayer = pool(2)
             normLayer = norm(cNum)
             moduleList += [convLayer,actvLayer,poolLayer,normLayer]
+            if dropout is not None:
+                moduleList += [drp(dropout[n])]
         self.net = torch.nn.Sequential(*moduleList)
     def forward(self,x):
         return self.net(x)
@@ -68,11 +72,13 @@ class BottleNeck(torch.nn.Module):
         return self.net(x)
 
 class Decoder(torch.nn.Module):
-    def __init__(self,dim,normMethod,activation,outputChannel,channelNum,kernelSize):
+    def __init__(self,dim,normMethod,activation,outputChannel,channelNum,kernelSize,dropout=None):
         super().__init__()
         conv = eval(f'torch.nn.Conv{dim}d')
         norm = eval(f'torch.nn.{normMethod}{dim}d')
         actv = eval(f'torch.nn.{activation}')
+        if dropout is not None:
+            drp = eval(f'torch.nn.Dropout{dim}d')
         moduleList = []
         for n,(cNum,kSize) in enumerate(zip(channelNum,kernelSize)):
             if n >= len(channelNum) - 1:
@@ -85,6 +91,8 @@ class Decoder(torch.nn.Module):
             normLayer = norm(outputC)
             upLayer   = torch.nn.Upsample(scale_factor=2,mode='bilinear' if dim==2 else 'trilinear', align_corners=True)
             moduleList += [convLayer,actvLayer,normLayer,upLayer]
+            if dropout is not None:
+                moduleList += [drp(dropout[n])]
         self.net = torch.nn.Sequential(*moduleList)
     def forward(self,x):
         return self.net(x)

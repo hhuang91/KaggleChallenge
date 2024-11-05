@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 31 10:52:48 2024
+Read CSV files and partition data by creating new CSV files
 
-@author: huang
+@author: H. Huang
 """
 import pandas as pd
 

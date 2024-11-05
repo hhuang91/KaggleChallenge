@@ -253,7 +253,7 @@ Just as a baseline study, I submitted the results I obatined from combining the 
 
 ![Initial Submission](./_image/init_submission.png)
 
-While removing the classification step actually yielded better results. This confirmed that the poor recall value would have a have negative impact.
+While removing the classification step actually yielded better results. This confirmed that the poor recall value indeed had a negative impact.
 
 ![Segmentation Only](./_image/2nd_submit.png)
 
@@ -284,7 +284,7 @@ Here is the results I obtained using the trained networks and the aforementioned
 
 ## Future Work
 
-If given more time, here are a list of thing I can do to futher improve the performance of my approach
+If given more time, here are a list of things I can do to futher improve the performance of my approach
 
 ### The Third Approach
 

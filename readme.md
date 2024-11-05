@@ -12,7 +12,7 @@ Please feel free to take a look at the provided [`Notebook.ipynb`](./Notebook.ip
 
 ## Overview
 
-This is a summary of my attemp at the [Ultrasound Nerve Segmentation](https://www.kaggle.com/competitions/ultrasound-nerve-segmentation/overview)
+This is a summary of my attemp at the [Ultrasound Nerve Segmentation](https://www.kaggle.com/competitions/ultrasound-nerve-segmentation/overview) Kaggle Challenge
 
 The task it to perform bianary segmentation of Brachial Plexus (BP) in ultrasound image. An example is shown below
 
@@ -22,7 +22,7 @@ The task it to perform bianary segmentation of Brachial Plexus (BP) in ultrasoun
 
 The performance of proposed approach will be evaluated based on DICE score.
 
-While the higher DICE score is the better, given the limited time, it's probably going to be hard to beat top ranking scores. So I need a more achievable goal that can demonstrate I have applied deep learning in a meaningful way for this challenge.
+While the higher DICE score the better, given the limited time, it's probably going to be hard to beat top ranking scores. So I need a more achievable goal that can demonstrate I have applied deep learning in a meaningful way for this challenge.
 
 Therefore, I submitted a **null test**, basically predicting zeros masks for all test data. If my approach is able to **have higher score than null test**, then the deep learning method I developed is likely able to extract useful information from the training data.
 

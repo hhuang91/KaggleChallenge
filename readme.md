@@ -83,7 +83,7 @@ With mean and standard deviation accumateled from all images: $\mu = 99.4072, \s
 
 #### Resizing
 
-The images and labels will be rescaled to size of nearest $(2^m,2^n)$ before passing into the network [$(580,420) \rarr (512,512)$]. There are two reasons for this:
+The images and labels will be rescaled to size of nearest $(2^m,2^n)$ before passing into the network $(580,420) \rarr (512,512)$. There are two reasons for this:
 
 * Typical network for segmentation, e.g. U-Net, involves series of downsampling and upsampling. Working with image size that's power of 2 insures the preservation of images size, and input scalability.
 * Pytorch's interpolation function for such operation can introduce inherent errors and is [non-deterministic](https://discuss.pytorch.org/t/non-deterministic-behavior-of-pytorch-upsample-interpolate/42842), which is worse when output size is not multiple or divisible by input size. Resizing image prior to inference can ensure interpolation within network operates with divisible sizes, reducing such error. 

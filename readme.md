@@ -80,7 +80,7 @@ In the end, 2237 images were excluded from the data for training, validation, an
 
 Due to the time limit, preprocessing of data was focused on the basics: normalization, resizing, and BCE weighting computation to facilitate training. Please refere to [Future Work](#future-work) for what other preprocessing I would do if given more time.
 
-All the following preprocessing steps are were on-the-fly when loading data, built into [customized data loader class](./data/dataHandler.py)
+All the following preprocessing steps were performed on-the-fly when loading data, built into [customized data loader class](./data/dataHandler.py)
 
 #### Normalization
 

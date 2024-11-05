@@ -2,7 +2,7 @@
 
 ## Repo Structure
 
-I built this entire repo with the ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Environment and Package](#environment-and-packages) section.
+I built this repo with the ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission files for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Environment and Package](#environment-and-packages) section.
 
 Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides an easy access to functions that ultize the modules for aforementioned tasks.
 
@@ -26,7 +26,7 @@ While the higher DICE score is the better, given the limited time, it's probably
 
 Therefore, I submitted a **null test**, basically predicting zeros masks for all test data. If my approach is able to **have higher score than null test**, then the deep learning method I developed is likely able to extract useful information from the training data.
 
-Here is the score to beat:
+Here is the score to beat (which is actually relatively high):
 
 ![Null Test](./_image/null_test.png)
 
@@ -139,9 +139,9 @@ Due to the clear challenge of vast presence of empty masks, directly training a 
 
 Either of these approaches would **need to train a segmentation network** that performs well on BP-present data, so I decided to start from there. 
 
-Before we start training network, we also need to choose loss function
+But before training network, a loss function needed to be designed.
 
-### Loss Functions
+### Loss Function
 
 Binary Segmentation --> **wighted BCE loss** (to account for class imbalance, with weighting term $\frac{N_{neg}}{N_{pos}}$ determined in pre-processing step)
 
@@ -149,7 +149,7 @@ Also, **modified DICE** with squared denominator impelmentation for class imbala
 
 $$DICE = \frac{2\sum pq +1}{\sum p^\mathbf 2 + \sum q^\mathbf 2 +1}$$
 
-DICE is more sentitive to small structures, while the BCE loss can be influenced more by the negative masks (although partially compensated by weighting). The combination of the two should yield more reliable segmentation results
+DICE is more sentitive to small structures, while the BCE loss can be influenced more by the negative masks (although partially compensated by weighting). The combination of the two should yield more reliable segmentation results.
 
 ## Segmentation Network
 
@@ -159,21 +159,23 @@ As the "gold standard" approach in segmentation tasks, U-Net is often the first 
 
 #### Overfitting problem
 
-After a couple of attemps, the U-Net always overfits to the training dataset. The training loss continuously went down, while in later epochs the validation loss went up, as shown below. **Neither heavy data augmentation nor smaller network could help**
+After a couple of attemps, the U-Net always ended up overfitting to the training dataset. The training loss continuously went down, while in later epochs the validation loss went up, as shown below. **Neither heavy data augmentation nor smaller network could help**.
 
 ![Unet training](./_image/Unet_training.png)
 
-This is likely due to a combination of **complex image features,** **relatively limited data**, **simple training label**. This caused network to **memorize the label** associated with each image instead of extracting generalizable features. 
+This is likely due to a combination of **complex image features,** **relatively limited data**, and **simple training label**. This caused network to **memorize the label** associated with each image instead of extracting generalizable features. 
 
 ### Solution: Custom Multi-Resolution Network with Dropout in-between Convolutional Layers
 
 This is based on an architeture I previously used that worked well in registration problem. It has a multi-level, encoder-decoder design with inter-level communication. One big advantage here is that this network is configurable to have dropout layers in encoder, decoder, and bottleneck. 
 
+Note that the dropout for convolution is a bit different than dropout for fully connect network: it random dropout entire channels rather than single pixels. Essentially, it encourages network to extra more generalizable features in each channel (filter).
+
 ![Customized Network](./_image/custom_network.png)
 
 #### Resolved overfitting with dropouts
 
-With dropouts added for all convolutional blocks (please refer to [training configuration](./trainingConfig.json) for detailed network configuration settings). The overfitting problem was resolved, and validation loss was consistently lower than training loss.
+With dropouts added for all convolutional blocks (please refer to [training configuration](./trainingConfig.json) for detailed network configuration settings), the overfitting problem was resolved, and validation loss was consistently lower than training loss.
 
 ![Network Training](./_image/net_training.png)
 
@@ -185,27 +187,27 @@ The test dataset consists of 23 BP-present images, the customized network achive
 
 ![BP-present training](./_image/BP-present-learning.png)
 
-Unfortunately, directly apply this network to BP-absent test data does not work: predictions consisted of false positive for all 78 BP-absent images (Shown below). But this was to be expected, and would be addressed in the subsequent transfer learning stage.
+Unfortunately, directly apply this network to BP-absent test data does not work: predictions consisted of false positive for all 78 BP-absent images (an example below). But this was to be expected, and would be addressed in the subsequent transfer learning stage.
 
 ![False Positive](./_image/FP.png)
 
 ### Transfer Learning to Improve Negative Detection
 
-Network was trained, with previous weights loaded, on the entirety of training data, i.e. BP-absent images included. The loss initially jumped up, as expected, due to introducing out-of-domain data. But was able to converge once again
+Network was then trained, with the intialization of previous trained weights, on the entirety of training data, i.e. all BP-absent images included. The loss initially jumped up, as expected, due to introducing out-of-domain data. But the training was able to converge once again
 
 ![transfer learning loss](./_image/transfer_learning.png)
 
-The network did not seem to forget how to extract true positive masks, and infact, improved its performance with average DICE of **0.65** for **all** 23 BP-present images. The improvement performance maybe explained by that the network has now seen what false positive structures look like and therefore, have better understand of correct segmentation.
+The network did not seem to forget how to extract true positive masks, and infact, improved its performance with average DICE of **0.65** for **all** 23 BP-present images. The improvement performance may be explained by that the network has now seen what false positive structures look like and therefore, has better understanding of correct segmentation.
 
 ![BP-absent learning, but on BP-present Data](./_image/BP-absent-learning.png)
 
-While at the same time able to predict true negative in many cases (**56** out of **78**)
+At the same time, it is able to predict true negative in many cases (**56** out of **78**)
 
 However, the specificity of the network, i.e. ability to correctly identify false positive, is not as good as desired to operate alone (**22** out of **78** cases are still reported false positive)
 
 ![True Negative](./_image/TN.png)
 
-Therefore, I decided to move on to the next part, to train a classification network to help futher detect negative cases before applying segmentation.
+Therefore, I decided to move on to the next part, to train a classification network to help futher distinguish between positive and negative cases before applying segmentation.
 
 ## Classification Network
 
@@ -217,15 +219,13 @@ Although proposed a decade ago, VGG can still be good starting point for classif
 
 #### Overfitting
 
-Similar to applying standard U-Net, the VGG network overfit rather quickly in my inital attemps. Again, increased data augmentation and smaller network did not help much
+Similar to applying standard U-Net, the VGG network overfit rather quickly in my inital attemps. Again, heavy data augmentation and smaller network did not help much.
 
-![VGG training](./_image/vgg-learning.png)
-
-The overfitting occured much ealier is likely because the training label is now just a single classication number, which is much simpler. So network can **easily memorize the label**.
+![VGG training](./_image/vgg-learning.png)Compared to U-Net, the overfitting of VGG occured much ealier and is likely because the training label was just a single classication number, which is much simpler compared to segmentation masks. So network can **more easily memorize the label**.
 
 ## Solution: Modified Custom Multi-Resolution Network
 
-I then resort to my previosuly used network architeture, with modification to make it work with single number outputs. Dropout layers were again added throughout the network as a regularization to prevent overfitting.
+I then used my previosu network architeture, with modification to make it work with single number outputs. Dropout layers were again added throughout the network as a regularization to prevent overfitting. 
 
 ![](./_image/custom_network_cls.png)
 
@@ -237,7 +237,7 @@ The custom network did not overfit easily, but the validation loss appeared to b
 
 #### Test Results
 
-Upon testing on test dataset, the network has the following performance
+The inference of network on test data had the following performance:
 
 | Accuracy | Precision | Recall (Sensitivity) | Specificty |
 | -------- | --------- | -------------------- | ---------- |
@@ -245,11 +245,11 @@ Upon testing on test dataset, the network has the following performance
 
 While the specificity looks okay, the recall value is quite low, which means that in final evaluation, it's likely that many of the positive cases will be marked as empty, which will significantly degrades DICE score.
 
-## Ad-hoc Fixes
+## Initial Submission
 
-### Initial Submission
+**Proper post-processing was applied to network output to recale it back to original size and encode it in RLE format.**
 
-Just as a baseline study, I submitted the results I obatined from combining the two networks. However, the evaluation results were quite poor, siginificantly lower than even the null test
+As a baseline study, I submitted the results I obatined from combining the two networks. However, the evaluation results were quite poor, siginificantly lower than even the null test
 
 ![Initial Submission](./_image/init_submission.png)
 
@@ -257,11 +257,13 @@ While removing the classification step actually yielded better results. This con
 
 ![Segmentation Only](./_image/2nd_submit.png)
 
+## Ad-hoc Fixes
+
 ### Classification
 
-While a better way to address poor classification performance is to adjust network design and finetune training hyperparameters for better performance, I unfortunately did not have enough time. So I tried an ad-hoc fix that didn't increase the performance of the classification network itself, but insteaded, tailored its performance to the overall task.
+While a better way to address poor classification performance is to adjust network design and finetune training hyperparameters for better performance, I unfortunately did not have enough time. So I tried an ad-hoc fix that didn't increase the performance of the classification network itself, but instead, tailored its performance to the overall task.
 
-Recall that the segmentation network can still pick out many of the negative cases. Therefore, classification only needs to help with negative detection. With that in mind, as an ad-hoc fix, I moved the classification cutoff of the network output logits to negative -1, which increased recall to 1, but degraded specificty to 0.141. 
+Recall that the segmentation network can still pick out many of the negative cases (**56** out of **78**). Therefore, the classification only needs to help with negative detection. With that in mind, as an ad-hoc fix, I moved the classification cutoff of the network output logits from 0 to negative -1, which increased recall to 1, but degraded specificty to 0.141. 
 
 <img src="./_image/sigmoid.png" alt="Classification Decision Boundary" style="zoom:15%;" />
 
@@ -276,8 +278,6 @@ Therefore, we can rule out a few more false positive cases by applying a thresho
 
 ## Final Submission
 
-Proper post-processing was applied to network output to recale it back to original size and encode it in RLE format.
-
 Here is the results I obtained using the trained networks and the aforementioned ad-hoc fixes, I was able to bring up the final DICE score above the null test results.
 
 ![Final Submission](./_image/final_submit.png)
@@ -289,6 +289,10 @@ If given more time, here are a list of things I can do to futher improve the per
 ### The Third Approach
 
 The segmentation and classificaiton network actually shared about half of the architeture. Therefore, it's possible to combine them into one network that are trained on two tasks simultaneously. This not only increased the complexity of the network output (reducing overfitting) but makes features extracted by network more general and consistent for the two closely related tasks.
+
+### Closer Examination of Final Submission
+
+Although in the end, my approach yielded better results with ad-hoc fixes. I have not fully studied which part contributed the most to the improvement in performance. I should separately study the effect of classification and thresholding segmentation. I also need to take a closer look at the failure mode of each network, and see if they overlap, which might provide additional insights into the data.
 
 ### Additional Pre-Processing: Extra Features from Input Data 
 
@@ -304,15 +308,18 @@ The overfitting is a potential sign that the input features to the network is no
 The segmentation results from the neural network can be futher refined, including:
 
 * Morphological operations, such as dilation, erosion, hole filling, and dust removal.
-* PCA fitting of training masks, and reconstruct prediction
+* PCA fitting of training masks and then, reconstruct prediction
 
-The are also ways to perform aleatoric and epistemic uncertainty study of neural network, which can help refine the output based on statistics ([example](https://pubmed.ncbi.nlm.nih.gov/36906915/))
+The are also ways to perform aleatoric and **epistemic** uncertainty study of neural network, which can help refine the output based on statistics ([example](https://pubmed.ncbi.nlm.nih.gov/36906915/))
+
+* The epistemic uncertainty is basically the uncertainty of the model due to lack of **training data**
+* Dropout layers (built into current model) can be used to approximate and study epistemic uncertainty.
 
 ### Better Training Starting Point
 
 #### Unsupervised Pre-training via Autoencoder
 
-The encoder of regmentation and classification networks can be pre-trained by auxiliary tasks to help extract generalizatable features. Some examples:
+The encoder of regmentation and classification networks can be pre-trained by self-supervised tasks to help extract generalizatable features. Some examples:
 
 * Jigsaw puzzle
 * Filling blanks
@@ -326,9 +333,9 @@ Fundation models have become more and more available and can generally perform w
 
 A seemingly "mundane" yet an integral part of training a high-performance model. 
 
-The reason I built the whole training pipe based on `.json` configuration files is for easy documentation and systematic hyperparameter search. Although I didn't do much tuning for this challenge, 
+The main reason I built the whole training pipe based on `.json` configuration files is for easy documentation and systematic hyperparameter search. Although I didn't do much tuning for this challenge, 
 
-Additionaly, there is a framework that I have been working on to incorperate into neural network training. It's called [**NeverGrad**](https://facebookresearch.github.io/nevergrad/). And one of its intended purpose is for hyperparameter search for network training. Adding this to the pipeline will help streamline the process and allow us to focus on other tasks (data processing, architeture design, training strategies, post-processing, etc.)
+Additionally, there is a framework that I have been working on to incorperate into neural network training. It's called [**NeverGrad**](https://facebookresearch.github.io/nevergrad/). One of its intended purposes is to finetune hyperparameter for network training. Adding this to the pipeline will help streamline the process and allow us to focus on other tasks (data processing, architeture design, training strategies, post-processing, etc.)
 
 ## Environment and Packages
 
@@ -340,4 +347,4 @@ Pytorch: 2.5 ('+cuda118')
 
 Cuda: 11.8
 
-Additona packages: pandas, matplotlib, scipy, tqdm, scikit-image, glob
+Additona packages: pandas, matplotlib, scipy, tqdm, scikit-image, glob, jupyter

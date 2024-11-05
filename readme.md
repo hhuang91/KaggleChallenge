@@ -225,7 +225,7 @@ Similar to applying standard U-Net, the VGG network overfit rather quickly in my
 
 ## Solution: Modified Custom Multi-Resolution Network
 
-I then used my previosu network architeture, with modification to make it work with single number outputs. Dropout layers were again added throughout the network as a regularization to prevent overfitting. 
+I then used my previous network architeture, with modification to make it work with single number outputs. Dropout layers were again added throughout the network as a regularization to prevent overfitting. 
 
 ![](./_image/custom_network_cls.png)
 
@@ -333,7 +333,7 @@ Fundation models have become more and more available and can generally perform w
 
 A seemingly "mundane" yet an integral part of training a high-performance model. 
 
-The main reason I built the whole training pipe based on `.json` configuration files is for easy documentation and systematic hyperparameter search. Although I didn't do much tuning for this challenge, 
+The main reason I built the whole training pipeline based on `.json` configuration files is for easy documentation and systematic hyperparameter search. Although I didn't do much tuning for this challenge, 
 
 Additionally, there is a framework that I have been working on to incorperate into neural network training. It's called [**NeverGrad**](https://facebookresearch.github.io/nevergrad/). One of its intended purposes is to finetune hyperparameter for network training. Adding this to the pipeline will help streamline the process and allow us to focus on other tasks (data processing, architeture design, training strategies, post-processing, etc.)
 

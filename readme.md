@@ -43,11 +43,20 @@ Upon first inspection of provided `train_mask.csv`, many of the masks are empty 
 
 Therefore, the first step is to divide data based on if BP is present inside an image, creating subsets of **"BP-present"** (2323 images) and **"BP-absent"** (3312).
 
-Then the partition of datasets for training was based on subject ids (47 in total) instead of just index of images to maximally avoid cross contamination. The partitioned data are shown below
+Then the partition of datasets for training was based on subject ids (47 in total) instead of just index of images to maximally avoid cross contamination. 
+
+* Non-empty subset: 2323 images in total 
+  * Training: **subject 1-41**, (2031 images)
+  * Validation: **subject 42-47**, (259 images) 
+  * Test: **subject 47** (33 images)
+* Empty subset: 3312 images in total
+  * Training: **subject 1-41** (2885 images)
+  * Validation: **subject 46** (340 images)
+  * Test: **subject 47** (87 images)
 
 ![Data Partition](./_image/data_partition.png)
 
-
+(note that although the challenge provided test dataset, it does not include ground truth label, so it will be difficult to analyze the performance)
 
 ### Poor data quality (contradictory labels)
 

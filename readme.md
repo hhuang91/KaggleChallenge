@@ -4,9 +4,9 @@
 
 I built this repo with the ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission files for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Environment and Package](#environment-and-packages) section.
 
-Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides an easy access to functions that ultize the modules for aforementioned tasks.
+Everything is organzied in folders (modules) based on their respective purposes. The `API.py` provides an easy access to functions that ultize the modules for aforementioned tasks.
 
-The specification of parameters for each training experiment can be hard to keep track of. For this reason, I opt to utilize `json` files for storing and providing training instructions.
+Normally, the specification of parameters for each training experiment can be hard to keep track of. For this reason, I opt to utilize `json` files for storing and providing training configurations.
 
 Please feel free to take a look at the provided [`Notebook.ipynb`](./Notebook.ipynb) to see how training and testing were done using this repo, and three example `json` files for customization of training. 
 

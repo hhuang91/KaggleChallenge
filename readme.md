@@ -2,7 +2,7 @@
 
 ## Repo Structure
 
-I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Enviornment and Package](#Environment/Packages) section.
+I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Enviornment and Package](#Environment and Packages) section.
 
 Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides easy access to functions that ultize the modules for aforementioned tasks.
 
@@ -325,7 +325,7 @@ The reason I built the whole training pipe based on `.json` configuration files 
 
 Additionaly, there is a framework that I have been working on to incorperate into neural network training. It's called [**NeverGrad**](https://facebookresearch.github.io/nevergrad/). And one of its intended purpose is for hyperparameter search for network training. Adding this to the pipeline will help streamline the process and allow us to focus on other tasks (data processing, architeture design, training strategies, post-processing, etc.)
 
-## Environment/Packages
+## Environment and Packages
 
 Python: 3.9
 

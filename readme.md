@@ -2,11 +2,11 @@
 
 ## Repo Structure
 
-I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Environment and Package](#environment-and-packages) section.
+I built this entire repo with the ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Environment and Package](#environment-and-packages) section.
 
-Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides easy access to functions that ultize the modules for aforementioned tasks.
+Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides an easy access to functions that ultize the modules for aforementioned tasks.
 
-The parameters specification for each training experiment can be hard to keep track of. For this reason, I utilize `json` files for storing and providing training instructions.
+The specification of parameters for each training experiment can be hard to keep track of. For this reason, I opt to utilize `json` files for storing and providing training instructions.
 
 Please feel free to take a look at the provided [`Notebook.ipynb`](./Notebook.ipynb) to see how training and testing were done using this repo, and three example `json` files for customization of training. 
 
@@ -14,7 +14,7 @@ Please feel free to take a look at the provided [`Notebook.ipynb`](./Notebook.ip
 
 This is a summary of my attemp at the [Ultrasound Nerve Segmentation](https://www.kaggle.com/competitions/ultrasound-nerve-segmentation/overview)
 
-The tasks aim to perform bianary segmentation of Brachial Plexus (BP) in ultrasound image. An example is shown below
+The task it to perform bianary segmentation of Brachial Plexus (BP) in ultrasound image. An example is shown below
 
 ![example](./_image/example.png)
 
@@ -22,9 +22,9 @@ The tasks aim to perform bianary segmentation of Brachial Plexus (BP) in ultraso
 
 The performance of proposed approach will be evaluated based on DICE score.
 
-While the higher DICE score the better, given the limited time, it's probably going to be hard to beat top ranking scores. So I need a more achievable goal that can demonstrate I have applied deep learning in a meaningful way for this challenge.
+While the higher DICE score is the better, given the limited time, it's probably going to be hard to beat top ranking scores. So I need a more achievable goal that can demonstrate I have applied deep learning in a meaningful way for this challenge.
 
-Therefore, I submitted a **null test**, basically predicting zeros masks for all test data. If my approach was able to **have higher score than null test**, then the deep learning method I developed is likely able to extract useful information from the training data.
+Therefore, I submitted a **null test**, basically predicting zeros masks for all test data. If my approach is able to **have higher score than null test**, then the deep learning method I developed is likely able to extract useful information from the training data.
 
 Here is the score to beat:
 
@@ -32,7 +32,7 @@ Here is the score to beat:
 
 ## Data Inspection & Processing
 
-Good understanding of data characteristics is key to successful deep learning methods. Therefore, I started by looking at the data provided. And one issue immediately jumpped out:
+Good understanding of data characteristics is the key to successful deep learning methods. Therefore, I started by looking at the data provided. And one issue immediately jumpped out:
 
 ### Class imbalance issue
 
@@ -70,9 +70,9 @@ Upon search in the discussion section of the Kaggle challenge, other users have 
 
 <img src="./_image/contradictory_samples.png" alt="Another contradiction" style="zoom:50%;" />
 
-I re-implemented one of the suggested method for filtering out such data [[ref]([13_clean/0_filter_incoherent_images.ipynb](https://github.com/julienr/kaggle_uns/blob/master/13_clean/0_filter_incoherent_images.ipynb))], which is based on histogram matching with cosine distance for recoginizing similar images.
+I re-implemented one of the suggested methods for filtering out such data [[ref]([13_clean/0_filter_incoherent_images.ipynb](https://github.com/julienr/kaggle_uns/blob/master/13_clean/0_filter_incoherent_images.ipynb))], which is based on histogram matching with cosine distance for recoginizing similar images.
 
-In the end, 2237 images were excluded from the data for training, validation, and test.
+In the end, a total of 2237 images was excluded from the data for training, validation, and test.
 
 ![Data Removal](./_image/data_removal.png)
 
@@ -84,7 +84,7 @@ All the following preprocessing steps were performed on-the-fly when loading dat
 
 #### Normalization
 
-A straight foward way of normalizing images would be to just divide by 255, because all images are in `uint8`. However, we can perform dataset-wise Z-score normalization after reading images to bring all data into relatively close and normalized distribution, which would make it easier for training.
+A straightfoward way of normalizing images would be to just divide each one by 255, because all images are in `uint8`. However, we can perform dataset-wise Z-score normalization after reading images to bring all data into relatively close and normalized distribution, which would make it easier for training.
 
 $$x = \frac{x-\mu}{\sigma}$$
 
@@ -106,22 +106,22 @@ As mentioned before, the imbalance of positive pixels and negative pixels (even 
 
 ### Data Augmentation
 
-The data provided, after removal of contradictory data, is realtively limited (3398). Therefore, to prevent overfitting, data augmentation strategies are implemented
+The data provided, after removal of contradictory data, is realtively limited (3398). Therefore, to prevent overfitting, data augmentation strategies were implemented
 
-The following strategies are also implemented to perform on-the-fly when loading the data, incorperated into [customized data loader class](./data/dataHandler.py)
+The following strategies were performed on-the-fly when loading the data, incorperated into [customized data loader class](./data/dataHandler.py)
 
 * random flip: 50% chance of flipping data horizontally, followed by 50% chance of vertical flipping
 * random rigid transformation: $\pm5$ pixel shift in $H,W$ dimension, $\pm 5$ degree of random rotation
 * noise injection: Guassian noise with $\sigma=2$% of the mean of the image
-* random crop: images are randomly cropped from [512,512] to [384,384] 
-  * the choice of 384 is because it is $6\times 2^5$, where 5 is the depth of my current network maxpooling dimension reduction
-  * Also, the cropping does not affect network performance because CNN is input-scalable. So applying trained network on 512x512 images would still work
+* random crop: [384,384] images are randomly cropped from the original, resized [512,512] 
+  * the choice of 384 is because it is $6\times 2^5$, where 5 is the depth of my current network's 2x2 maxpooling layers for dimension reduction
+  * Also, the cropping does not affect network performance on original [512, 512] images, because CNN is input-scalable as long as input dimensions are multiples of $2^5$.
 
 Note that except noise injection, other augmentations are performed on both image and mask to preserve spatial alignment, i.e. the integrity of labels
 
 ## Approach
 
-Due to the clear challenge of vast presence of empty masks, directly train a network would be difficult. I initially planned to try out the following two approaches individually, but ended up with a **combination of the two**.
+Due to the clear challenge of vast presence of empty masks, directly training a network would be difficult. I initially planned to try out the following two approaches individually, but ended up with a **combination of the two**.
 
 (I later thought of a thrid approach but didn't have the time to try it out, please refer to [Future Work section](#future-work))
 
@@ -132,7 +132,7 @@ Due to the clear challenge of vast presence of empty masks, directly train a net
 * A binary segmentation network segment BP from BP-present images
   * Trained (mostly) BP-present images 
 
-### 2. Mixing in empty masks:
+### 2. Single segmentation network, mixing in empty masks during training:
 
 * During the initial round of training, the network would go through all BP-present data but only a specificed (small) number of BP-absent data that are randomly selected
 * Once converged, do transfer learning with entire dataset
@@ -159,7 +159,7 @@ As the "gold standard" approach in segmentation tasks, U-Net is often the first 
 
 #### Overfitting problem
 
-After a couple of attemps, the U-Net always overfits to the training, when training loss continuously going down while the validation loss goes up, as shown below. **Neither heavy data augmentation nor smaller network could help**
+After a couple of attemps, the U-Net always overfits to the training dataset. The training loss continuously went down, while in later epochs the validation loss went up, as shown below. **Neither heavy data augmentation nor smaller network could help**
 
 ![Unet training](./_image/Unet_training.png)
 
@@ -259,7 +259,7 @@ While removing the classification step actually yielded better results. This con
 
 ### Classification
 
-While a better way to address poor classification performance is to adjust network design and finetune training hyperparameters for better performance, I unfortunately did have enough time. So I tried an ad-hoc fix that didn't increase the performance of the classification network itself, but insteaded, tailored its performance to the overall task.
+While a better way to address poor classification performance is to adjust network design and finetune training hyperparameters for better performance, I unfortunately did not have enough time. So I tried an ad-hoc fix that didn't increase the performance of the classification network itself, but insteaded, tailored its performance to the overall task.
 
 Recall that the segmentation network can still pick out many of the negative cases. Therefore, classification only needs to help with negative detection. With that in mind, as an ad-hoc fix, I moved the classification cutoff of the network output logits to negative -1, which increased recall to 1, but degraded specificty to 0.141. 
 

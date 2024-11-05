@@ -1,5 +1,15 @@
 # Kaggle Challenge - Ultrasound Nerve Segmentation
 
+## Repo Structure
+
+I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Enviornment and Package](#Environment/Packages) section.
+
+Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides easy access to functions that ultize the modules for aforementioned tasks.
+
+The parameters specification for each training experiment can be hard to keep track of. For this reason, I utilize `json` files for storing and providing training instructions.
+
+Please feel free to take a look at the provided [`Notebook.ipynb`](./Notebook.ipynb) to see how training and testing were done using this repo, and three example `json` files for customization of training. 
+
 ## Overview
 
 This is a summary of my attemp at the [Ultrasound Nerve Segmentation](https://www.kaggle.com/competitions/ultrasound-nerve-segmentation/overview)
@@ -8,11 +18,13 @@ The tasks aim to perform bianary segmentation of Brachial Plexus (BP) in ultraso
 
 ![example](./_image/example.png)
 
-## Refined Aim
+## Aim
 
-While the higher final score the better, given the limited time, it's probably going to be hard to beat top ranking scores. So I need a more achievable goal that can demonstrate I have applied deep learning in a meaningful way for this challenge.
+The performance of proposed approach will be evaluated based on DICE score.
 
-Therefore, I submitted a **null test**, basically predicting zeros masks for all test data. If my approach was able to **have higher score than null test**, then the deep learning method I developed is able to extract useful information from the training data.
+While the higher DICE score the better, given the limited time, it's probably going to be hard to beat top ranking scores. So I need a more achievable goal that can demonstrate I have applied deep learning in a meaningful way for this challenge.
+
+Therefore, I submitted a **null test**, basically predicting zeros masks for all test data. If my approach was able to **have higher score than null test**, then the deep learning method I developed is likely able to extract useful information from the training data.
 
 Here is the score to beat:
 
@@ -45,7 +57,11 @@ I realized this issue after a couple failed attempts to train the network to per
 
 ![Confounding label](./_image/confounding_image.png)
 
-Upon search in the discussion section of the Kaggle challenge, other users have reported the [same issue](https://www.kaggle.com/competitions/ultrasound-nerve-segmentation/discussion/21081#123201). I re-implemented one of the suggested method for filtering out such data [[ref]([13_clean/0_filter_incoherent_images.ipynb](https://github.com/julienr/kaggle_uns/blob/master/13_clean/0_filter_incoherent_images.ipynb))], which is based on histogram matching with cosine distance for recoginizing similar images.
+Upon search in the discussion section of the Kaggle challenge, other users have reported the [same issue](https://www.kaggle.com/competitions/ultrasound-nerve-segmentation/discussion/21081#123201). And here is another image demonstrating the same issue reported by [another user](https://fhtagn.net/prog/2016/08/19/kaggle-uns.html)
+
+<img src="./_image/contradictory_samples.png" alt="Another contradiction" style="zoom:50%;" />
+
+I re-implemented one of the suggested method for filtering out such data [[ref]([13_clean/0_filter_incoherent_images.ipynb](https://github.com/julienr/kaggle_uns/blob/master/13_clean/0_filter_incoherent_images.ipynb))], which is based on histogram matching with cosine distance for recoginizing similar images.
 
 In the end, 2237 images were excluded from the data for training, validation, and test.
 
@@ -53,9 +69,9 @@ In the end, 2237 images were excluded from the data for training, validation, an
 
 ### Pre-processing of data
 
-Due to the time limit, preprocessing of data was focused on basics: normalization, resizing, and BCE weighting computation to facilitate training. Please refere to [Future Work](#Tasks for the Future) for what other preprocessing I would do if given more time.
+Due to the time limit, preprocessing of data was focused on the basics: normalization, resizing, and BCE weighting computation to facilitate training. Please refere to [Future Work](#Future Work) for what other preprocessing I would do if given more time.
 
-All the following preprocessing steps are done on-the-fly when loading data, built into [customized data loader class](./data/dataHandler.py)
+All the following preprocessing steps are were on-the-fly when loading data, built into [customized data loader class](./data/dataHandler.py)
 
 #### Normalization
 
@@ -96,7 +112,9 @@ Note that except noise injection, other augmentations are performed on both imag
 
 ## Approach
 
-Due to the clear challenge of vast presence of empty masks, directly train a network would be difficult. Therefore, I tried the following two approaches. (I thought of a thrid approach but didn't have the time to try it out, please refer to [Future work section](#Tasks for the Future))
+Due to the clear challenge of vast presence of empty masks, directly train a network would be difficult. I initially planned to try out the following two approaches individually, but ended up with a **combination of the two**.
+
+(I later thought of a thrid approach but didn't have the time to try it out, please refer to [Future Work section](#Future Work))
 
 ### 1. Two networks for two tasks:
 
@@ -110,7 +128,7 @@ Due to the clear challenge of vast presence of empty masks, directly train a net
 * Every epoch the network would go through all BP-present data but only a specificed (small) number of BP-absent data that are randomly selected
 * Once converged, do transfer learning with entire dataset
 
-Either of these approaches would need to train a segmentation network that performs well on BP-present data, so I decided to start from there. 
+Either of these approaches would **need to train a segmentation network** that performs well on BP-present data, so I decided to start from there. 
 
 Before we start training network, we also need to choose loss function
 
@@ -142,7 +160,7 @@ After a couple of attemps, the U-Net always overfits to the training, when train
 
 This is likely due to a combination of **complex image features,** **relatively limited data**, **simple training label**. This caused network to **memorize the label** associated with each image instead of extracting generalizable features. 
 
-### Solution: Customized Multi-Resolution Network with Dropout in-between Convolutional Layers
+### Solution: Custom Multi-Resolution Network with Dropout in-between Convolutional Layers
 
 This is based on an architeture I previously used that worked well in registration problem. It has a multi-level, encoder-decoder design with inter-level communication. One big advantage here is that this network is configurable to have dropout layers in encoder, decoder, and bottleneck. 
 
@@ -158,155 +176,163 @@ The consistent lower validation loss is expected because dropout basically makes
 
 #### Test Results
 
-The test dataset consists of 23 BP-present images, the customized network achived mean DICE score of **0.61** for all these cases.
+The test dataset consists of 23 BP-present images, the customized network achived mean DICE score of **0.61** for all these cases. An example is shown below:
 
-Unfortunately, directly apply this network to BP-absent test data does not work: predictions consisted of false positive for all 78 BP-absent images. But this was to be expected, and would be addressed in the subsequent transfer learning stage
+![BP-present training](./_image/BP-present-learning.png)
 
-## Transfer Learning to Improve Negative Detection
+Unfortunately, directly apply this network to BP-absent test data does not work: predictions consisted of false positive for all 78 BP-absent images (Shown below). But this was to be expected, and would be addressed in the subsequent transfer learning stage.
 
-Network was 
+![False Positive](./_image/FP.png)
 
+### Transfer Learning to Improve Negative Detection
 
+Network was trained, with previous weights loaded, on the entirety of training data, i.e. BP-absent images included. The loss initially jumped up, as expected, due to introducing out-of-domain data. But was able to converge once again
 
-**Final Solution**
+![transfer learning loss](./_image/transfer_learning.png)
 
-Divide data into subsets of "BP-present" and "BP-absent." Then, trian binary segmentation network in two steps :
+The network did not seem to forget how to extract true positive masks: still predicting relatively good masks for **all** 23 BP-present images.
 
-1. Every epoch the network would go through all BP-present data but only a specificed (small) number of BP-absent data that are randomly selected [handled by customized customized data sampler function, defined in `./data/dataHandler.py`]
-2. Network goes through entrie training dataset including empty ones to futher finetune the performance on true negatives
+![BP-absent learning, but on BP-present Data](./_image/BP-absent-learning.png)
 
-### Statisics
+While at the same time able to predict true negative in many cases (**56** out of **78**)
 
-Input images: $\mu = 99.4071923455182, \sigma= 56.59492460345583$ (mean and accumulated from all images)
+However, the specificity of the network, i.e. ability to correctly identify false positive, is not as good as desired to operate alone (**22** out of **78** cases are still reported false positive)
 
-Labels: each label has different balance between poistive and negative class. For better BCE loss computation, the ratio of $\frac{N_{neg}}{N_{pos}}$ should be provided for each batch during training (to use in `BCEWithLogitsLoss`).
+![True Negative](./_image/TN.png)
 
-## Data Processing
+Therefore, I decided to move on to the next part, to train a classification network to help futher detect negative cases before applying segmentation.
 
-### Partition of data
+## Classification Network
 
-We partition datasets based on subject ids (47 in total) instead of just index of images to maximally avoid cross contamination. Recall that we also need to divide data based on if mask is empty or not.
+The task of classification network is to decided if BP is present inside an image before passing it to the segmentation network. If BP is not present, then the mask will simply be empty
 
-(note that although the challenge provided test dataset, it does not include ground truth label, so it will be difficult to analyze the performance)
+### Standard VGG
 
-* Non-empty subset: 2323 images in total 
-  * Training: **subject 1-41**, (2031 images)
-  * Validation: **subject 42-47**, (259 images) 
-  * Test: **subject 47** (33 images)
-* Empty subset: 3312 images in total
-  * Training: **subject 1-41** (2885 images)
-  * Validation: **subject 46** (340 images)
-  * Test: **subject 47** (87 images)
+Although proposed a decade ago, VGG can still be good starting point for classification tasks. I used VGG11 with batchnorm from PyTorch Hub as an inital starting point. 
 
-For validation and testing, we test with all $259+340 = 599$ and $87+33=120$ pairs respectively without separation.
+#### Overfitting
 
-### Preprocessing
+Similar to applying standard U-Net, the VGG network overfit rather quickly in my inital attemps. Again, increased data augmentation and smaller network did not help much
 
-Not much preprocessing is needed, becuase the images all have same size, and thery are already in loadable format and realtive small (for future work, can nromalize and then convert them into `.pth` first for slightly faster loading time)
+![VGG training](./_image/vgg-learning.png)
 
-A straight foward way of normalizing images would be to just divide by 255, because all images are in `uint8`. However, we can perform Z-score normalization after reading images to bring all data into relatively close and normalized distribution, which would make it easier for training.
-$$
-x = \frac{x-\mu}{\sigma}
-$$
-In addition, the images and labels will be rescaled to size of nearest $(2^m,2^n)$ before passing into the network [$(580,420) \rarr (512,512)$]. The reason for this is that we use multi-resolution "U-Net-like" architecture that involves series of downsampling and upsampling. Pytorch's interpolation function for such operation can introduce inherent errors and is [non-deterministic](https://discuss.pytorch.org/t/non-deterministic-behavior-of-pytorch-upsample-interpolate/42842), which is worse when output size is not multiple or divisible by input size. Resizing image prior to inference can ensure interpolation within network operates with divisible sizes, reducing such error. 
+The overfitting occured much ealier is likely because the training label is now just a single classication number, which is much simpler. So network can **easily memorize the label**.
 
-## Network Design
+## Solution: Modified Custom Multi-Resolution Network
 
-**Multi-resolution U-Net-Like structures**
+I then resort to my previosuly used network architeture, with modification to make it work with single number outputs. Dropout layers were again added throughout the network as a regularization to prevent overfitting.
 
-## Training Strategy
+![](./_image/custom_network_cls.png)
 
-### Initialization
+#### Training Classification network
 
-Network is fully convolutional --> Using Kaiming (He) initialization
+The custom network did not overfit easily, but the validation loss appeared to be unstable, which could benefit from [further investigation](#Tasks for the Future)
 
-### Loss funciton
+![classification network training](./_image/cls_net_training.png)
 
-Binary Segmentation --> **wighted BCE loss** (to account for class imbalance)
+#### Test Results
 
-* when loading the masks, count number of positive pixels and number of negative pixels, $N_{pos},N_{neg}$
-* use $\frac{N_{neg}}{N_{pos}}$ as weight parameter for `torch.nn.functional.binary_cross_entropy_with_logits`
+Upon testing on test dataset, the network has the following performance
 
-Also, **modified DICE** with squared denominator impelmentation for class imbalance [[ref](https://arxiv.org/pdf/1606.04797)] and also smoothing of 1 on both nominator and denominator
-$$
-DICE = \frac{2\sum pq +1}{\sum p^\mathbf 2 + \sum q^\mathbf 2 +1}
-$$
+| Accuracy | Precision | Recall (Sensitivity) | Specificty |
+| -------- | --------- | -------------------- | ---------- |
+| 0.753    | 0.667     | 0.435                | 0.821      |
 
-DICE is more sentitive to small structures, while the BCE loss can be influenced more by the negative masks (although partially compensated by weighting). The combination of the two should yield more reliable segmentation results
+While the specificity looks okay, the recall value is quite low, which means that in final evaluation, it's likely that many of the positive cases will be marked as empty, which will significantly degrades DICE score.
 
-### Data augmentation
+## Ad-hoc Fixes
 
-Three data augmentation strategies are available:
+### Initial Submission
 
-1. Random horitonal flip
-   * Each image has a probability of $p$ being flipped horizontally
-2. Random rigid trasnformation
-   * Each image (and corresponding mask ) has a random rotation of $\pm\theta$ degrees
-   * Each image  (and corresponding mask ) has random transalation of $\mathbf T$ pixels in both $H$ and $W$ dimension
-3. Noise injection
-   * Each image (image only, mask is left untouched) has injection of Guassian noise with $\sigma=s*\mu_{im}$ 
+Just as a baseline study, I submitted the results I obatined from combining the two networks. However, the evaluation results were quite poor, siginificantly lower than even the null test
 
-Noise injection ($s=0.02$) and random flip ($p = 0.5$) are used in training, because those produces images similar to realistic data. The ranndom rigid transformation involves additional interpolation and the padding of image may also cause image to be not realistic.
+![Initial Submission](./_image/init_submission.png)
 
-## Overfitting Test
+While removing the classification step actually yielded better results. This confirmed that the poor recall value would have a have negative impact.
 
-## Training of Network
+![Segmentation Only](./_image/2nd_submit.png)
 
-## Hyperparameter Tuning/Selection
+### Classification
 
-## API
+While a better way to address poor classification performance is to adjust network design and finetune training hyperparameters for better performance, I unfortunately did have enough time. So I tried an ad-hoc fix that didn't increase the performance of the classification network itself, but insteaded, tailored its performance to the overall task.
 
-## Performance Evaluation
+Recall that the segmentation network can still pick out many of the negative cases. Therefore, classification only needs to help with negative detection. With that in mind, as an ad-hoc fix, I moved the classification cutoff of the network output logits to negative -1, which increased recall to 1, but degraded specificty to 0.141. 
 
-## Tasks for the Future
+<img src="./_image/sigmoid.png" alt="Classification Decision Boundary" style="zoom:15%;" />
 
-Dropout
+### Segmentation
 
-axusilary task 
+It's clear that the segmentation network can distinguish a part of the negative cases, so the network mush have learned something. In close inspection of the mask predicted by the network from the test dataset: 
 
-### Additional Features Extracted from Input Data
+* the true positive masks have number of positive pixels in range of  [6772, 9259]
+* the false positive masks have number of positive pixels in range of [5140, 8970]
 
-e.g.
+Therefore, we can rule out a few more false positive cases by applying a thresholding based on number of positive pixels. For final submission, I set the threshold to be 6000.
+
+## Final Submission
+
+Proper post-processing was applied to network output to recale it back to original size and encode it in RLE format.
+
+Here is the results I obtained using the trained networks and the aforementioned ad-hoc fixes, I was able to bring up the final DICE score above the null test results.
+
+![Final Submission](./_image/final_submit.png)
+
+## Future Work
+
+If given more time, here are a list of thing I can do to futher improve the performance of my approach
+
+### The Third Approach
+
+The segmentation and classificaiton network actually shared about half of the architeture. Therefore, it's possible to combine them into one network that are trained on two tasks simultaneously. This not only increased the complexity of the network output (reducing overfitting) but makes features extracted by network more general and consistent for the two closely related tasks.
+
+### Additional Pre-Processing: Extra Features from Input Data 
+
+The overfitting is a potential sign that the input features to the network is not sufficient. Therefore, another way to address it is to extract extra features from the input data. This could potentially be an important aspect, because ultrasound images (at least for provided data) are relatively monochrome and have low contrast and definination in soft tissue regions. A few examples are listed below
 
 * Image gradient
 * Edge
 * Transformations of image (Fourier Transform, Gabor Filter, Wavelet Decomposition)
-* Ultize other existing tools (e.g. [total segmentator](https://github.com/wasserth/TotalSegmentator))
+* Piror generated from existing tools, which can be deep learning-based (e.g. [total segmentator](https://github.com/wasserth/TotalSegmentator)) or traditional (e.g. [SNAKE: Active Contour](https://link.springer.com/article/10.1007/BF00133570))
 
-### Unsupervised Pre-training via Autoencoder
+### Additional Post-Processing
+
+The segmentation results from the neural network can be futher refined, including:
+
+* Morphological operations, such as dilation, erosion, hole filling, and dust removal.
+* PCA fitting of training masks, and reconstruct prediction
+
+The are also ways to perform aleatoric and epistemic uncertainty study of neural network, which can help refine the output based on statistics ([example](https://pubmed.ncbi.nlm.nih.gov/36906915/))
+
+### Better Training Starting Point
+
+#### Unsupervised Pre-training via Autoencoder
+
+The encoder of regmentation and classification networks can be pre-trained by auxiliary tasks to help extract generalizatable features. Some examples:
 
 * Jigsaw puzzle
 * Filling blanks
 * Image reconstruction
 
-### More Hyperparameter Tuning
+#### Leverage Fundation Models
 
-* Network architecture 
-  * number of levels
-  * number of channels in encoder/decoder
-* Activation functions
-* Normalization layers
-* Optimizer
-* (Random seed)
+Fundation models have become more and more available and can generally perform well in their designed domain. For ultrasound, [USFM](https://www.sciencedirect.com/science/article/abs/pii/S1361841524001270) recently came out, showing some very convincing results. 
 
---> Can use [**NeverGrad**](https://facebookresearch.github.io/nevergrad/) for hyperparameter search
+### Finally...More Hyperparameter Tuning
 
-### Ablation Study
+A seemingly "mundane" yet an integral part of training a high-performance model. 
 
-* loss function
-* archietecture design
+The reason I built the whole training pipe based on `.json` configuration files is for easy documentation and systematic hyperparameter search. Although I didn't do much tuning for this challenge, 
 
-### Options for Per-Instance Optimization
+Additionaly, there is a framework that I have been working on to incorperate into neural network training. It's called [**NeverGrad**](https://facebookresearch.github.io/nevergrad/). And one of its intended purpose is for hyperparameter search for network training. Adding this to the pipeline will help streamline the process and allow us to focus on other tasks (data processing, architeture design, training strategies, post-processing, etc.)
 
-Allows the output of the network to be further optimized after inference for better accuracy at the expense of computational time if needed
+## Environment/Packages
 
-* optimization pipeline
-* optimization objective function(s)
-* seamless integration 
+Python: 3.9
 
-### Implementing Fully Sharded Data Parrelle
+NumPy: 1.23.5
 
-Parrallel training fully utilizing multiple GPUs (distribute both model and data into GPUs)
+Pytorch: 2.5 ('+cuda118')
 
-* Allows training of larger models
-* Faster training with large batch size and parrallel computing
+Cuda: 11.8
+
+Additona packages: pandas, matplotlib, scipy, tqdm, scikit-image, glob

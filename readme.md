@@ -2,7 +2,7 @@
 
 ## Repo Structure
 
-I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Enviornment and Package](#enviornment-and-packages) section.
+I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Environment and Package](#environment-and-packages) section.
 
 Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides easy access to functions that ultize the modules for aforementioned tasks.
 

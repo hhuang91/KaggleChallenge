@@ -1,17 +1,17 @@
 {
 "data_dir":"./data/train",
 "csv_dir": "./csv",
-"out_dir": "./output",
-"lr":0.001,
+"out_dir": "./output_moreBPabsent",
+"lr":0.0005,
 "batch_size":16,
 "optimizer":"adam",
 "EPOCHS":200,
 "lossConfig":
     {
-    "BCE":0.5,
-    "DICE":0.5
+    "BCE":0.05,
+    "DICE":1
     },
-"empty_num":0.78,
+"empty_num":"all",
 "augmentation":
     {
     "doRigid":true,

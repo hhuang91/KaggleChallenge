@@ -195,7 +195,7 @@ Network was trained, with previous weights loaded, on the entirety of training d
 
 ![transfer learning loss](./_image/transfer_learning.png)
 
-The network did not seem to forget how to extract true positive masks: still predicting relatively good masks for **all** 23 BP-present images.
+The network did not seem to forget how to extract true positive masks, and infact, improved its performance with average DICE of **0.65** for **all** 23 BP-present images. The improvement performance maybe explained by that the network has now seen what false positive structures look like and therefore, have better understand of correct segmentation.
 
 ![BP-absent learning, but on BP-present Data](./_image/BP-absent-learning.png)
 

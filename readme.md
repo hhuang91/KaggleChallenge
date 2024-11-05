@@ -2,7 +2,7 @@
 
 ## Repo Structure
 
-I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Enviornment and Package](#Environment and Packages) section.
+I built this entire repo with ease-of-use in mind. It contains all the necessary functions/modules to train the network, test network, and generate submission file for the challenge. For enviornment sepcifications (I try to keep it minimal), please refer to [Enviornment and Package](#enviornment-and-packages) section.
 
 Everything is organzied in folders (modules) based on their respective functions. The `API.py` provides easy access to functions that ultize the modules for aforementioned tasks.
 
@@ -69,7 +69,7 @@ In the end, 2237 images were excluded from the data for training, validation, an
 
 ### Pre-processing of data
 
-Due to the time limit, preprocessing of data was focused on the basics: normalization, resizing, and BCE weighting computation to facilitate training. Please refere to [Future Work](#Future Work) for what other preprocessing I would do if given more time.
+Due to the time limit, preprocessing of data was focused on the basics: normalization, resizing, and BCE weighting computation to facilitate training. Please refere to [Future Work](#future-work) for what other preprocessing I would do if given more time.
 
 All the following preprocessing steps are were on-the-fly when loading data, built into [customized data loader class](./data/dataHandler.py)
 
@@ -114,7 +114,7 @@ Note that except noise injection, other augmentations are performed on both imag
 
 Due to the clear challenge of vast presence of empty masks, directly train a network would be difficult. I initially planned to try out the following two approaches individually, but ended up with a **combination of the two**.
 
-(I later thought of a thrid approach but didn't have the time to try it out, please refer to [Future Work section](#Future Work))
+(I later thought of a thrid approach but didn't have the time to try it out, please refer to [Future Work section](#future-work))
 
 ### 1. Two networks for two tasks:
 
@@ -226,7 +226,7 @@ I then resort to my previosuly used network architeture, with modification to ma
 
 #### Training Classification network
 
-The custom network did not overfit easily, but the validation loss appeared to be unstable, which could benefit from [further investigation](#Tasks for the Future)
+The custom network did not overfit easily, but the validation loss appeared to be unstable, which could benefit from [further investigation](#future-work)
 
 ![classification network training](./_image/cls_net_training.png)
 

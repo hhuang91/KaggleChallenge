@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov  4 00:08:45 2024
+Data cleaning script for picking out contradictory labels
 
-@author: hhuang91
+based on https://fhtagn.net/prog/2016/08/19/kaggle-uns.html
+
+@author: H. Huang
 """
 #%%
 import numpy as np

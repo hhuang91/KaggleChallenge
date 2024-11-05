@@ -134,7 +134,7 @@ Due to the clear challenge of vast presence of empty masks, directly train a net
 
 ### 2. Mixing in empty masks:
 
-* Every epoch the network would go through all BP-present data but only a specificed (small) number of BP-absent data that are randomly selected
+* During the initial round of training, the network would go through all BP-present data but only a specificed (small) number of BP-absent data that are randomly selected
 * Once converged, do transfer learning with entire dataset
 
 Either of these approaches would **need to train a segmentation network** that performs well on BP-present data, so I decided to start from there. 
@@ -143,15 +143,11 @@ Before we start training network, we also need to choose loss function
 
 ### Loss Functions
 
-Binary Segmentation --> **wighted BCE loss** (to account for class imbalance)
+Binary Segmentation --> **wighted BCE loss** (to account for class imbalance, with weighting term $\frac{N_{neg}}{N_{pos}}$ determined in pre-processing step)
 
-* when loading the masks, count number of positive pixels and number of negative pixels, $N_{pos},N_{neg}$
-* use $\frac{N_{neg}}{N_{pos}}$ as weight parameter for `torch.nn.functional.binary_cross_entropy_with_logits`
+Also, **modified DICE** with squared denominator impelmentation for class imbalance [[ref](https://arxiv.org/pdf/1606.04797)] and also smoothing of 1 on both nominator and denominator 
 
-Also, **modified DICE** with squared denominator impelmentation for class imbalance [[ref](https://arxiv.org/pdf/1606.04797)] and also smoothing of 1 on both nominator and denominator
-$$
-DICE = \frac{2\sum pq +1}{\sum p^\mathbf 2 + \sum q^\mathbf 2 +1}
-$$
+$$DICE = \frac{2\sum pq +1}{\sum p^\mathbf 2 + \sum q^\mathbf 2 +1}$$
 
 DICE is more sentitive to small structures, while the BCE loss can be influenced more by the negative masks (although partially compensated by weighting). The combination of the two should yield more reliable segmentation results
 
